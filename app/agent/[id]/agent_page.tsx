@@ -17,7 +17,6 @@ import {
   HardDrive,
   Timer,
   CheckCircle2,
-  XCircle,
   Loader2,
 } from "lucide-react";
 
@@ -56,10 +55,24 @@ const mockSandbox: DockerSandbox = {
   uptime: 734,
 };
 
-export default function AgentPage({ params }: { params: { id: string } }) {
+type AgentPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default function AgentPage({ params }: AgentPageProps) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"running" | "paused" | "failed" | "complete">("running");
+  const [taskId, setTaskId] = useState("");
+
+  useEffect(() => {
+    async function loadParams() {
+      const resolvedParams = await params;
+      setTaskId(resolvedParams.id);
+    }
+
+    loadParams();
+  }, [params]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -70,11 +83,16 @@ export default function AgentPage({ params }: { params: { id: string } }) {
           id: Date.now().toString(),
           timestamp: new Date(),
           level: Math.random() > 0.8 ? "debug" : "info",
-          message: `Executing step ${prev.length + 1}: ${["Analyzing context", "Generating code", "Running tests", "Validating output"][Math.floor(Math.random() * 4)]}`,
+          message: `Executing step ${prev.length + 1}: ${
+            ["Analyzing context", "Generating code", "Running tests", "Validating output"][
+              Math.floor(Math.random() * 4)
+            ]
+          }`,
           source: "executor",
         },
       ]);
     }, 2000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -95,15 +113,21 @@ export default function AgentPage({ params }: { params: { id: string } }) {
               showLabel
             />
             <div className="w-px h-4 bg-border" />
-            <span className="text-sm text-muted-foreground">Task #{params.id}</span>
+            <span className="text-sm text-muted-foreground">Task #{taskId}</span>
           </div>
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setStatus(status === "running" ? "paused" : "running")}
               className="p-2 rounded-lg hover:bg-white/5 transition-colors"
             >
-              {status === "running" ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {status === "running" ? (
+                <Square className="w-4 h-4" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
             </button>
+
             <button className="p-2 rounded-lg hover:bg-white/5 transition-colors">
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -116,6 +140,7 @@ export default function AgentPage({ params }: { params: { id: string } }) {
             <span>Execution Progress</span>
             <span>{progress}%</span>
           </div>
+
           <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-accent to-accent-secondary rounded-full"
@@ -134,6 +159,7 @@ export default function AgentPage({ params }: { params: { id: string } }) {
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Agent Thoughts
               </h3>
+
               <div className="space-y-3">
                 {mockThoughts.map((thought, i) => (
                   <motion.div
@@ -157,10 +183,12 @@ export default function AgentPage({ params }: { params: { id: string } }) {
                         >
                           {thought.type}
                         </span>
+
                         <span className="text-[10px] text-muted-foreground">
                           {thought.timestamp.toLocaleTimeString()}
                         </span>
                       </div>
+
                       <p className="text-sm text-foreground/80 leading-relaxed">
                         {thought.content}
                       </p>
@@ -175,6 +203,7 @@ export default function AgentPage({ params }: { params: { id: string } }) {
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
                 Live Logs
               </h3>
+
               <div className="flex-1 min-h-0">
                 <Terminal logs={logs} live title="execution.log" className="h-full" />
               </div>
@@ -185,14 +214,18 @@ export default function AgentPage({ params }: { params: { id: string } }) {
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Docker Sandbox
               </h3>
-              
+
               <GlassCard className="p-4">
                 <div className="flex items-center gap-3 mb-4">
                   <Container className="w-5 h-5 text-accent" />
+
                   <div>
                     <div className="text-sm font-medium">{mockSandbox.containerId}</div>
-                    <div className="text-xs text-muted-foreground">Uptime: {mockSandbox.uptime}s</div>
+                    <div className="text-xs text-muted-foreground">
+                      Uptime: {mockSandbox.uptime}s
+                    </div>
                   </div>
+
                   <span className="ml-auto flex items-center gap-1.5 text-xs text-terminal-green">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-terminal-green opacity-75" />
@@ -216,6 +249,7 @@ export default function AgentPage({ params }: { params: { id: string } }) {
                         </span>
                         <span>{metric.value}%</span>
                       </div>
+
                       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                         <motion.div
                           className={`h-full ${metric.color} rounded-full`}
@@ -229,9 +263,10 @@ export default function AgentPage({ params }: { params: { id: string } }) {
                 </div>
               </GlassCard>
 
-              {/* Retry Visualization */}
+              {/* Execution Steps */}
               <GlassCard className="p-4">
                 <h4 className="text-sm font-medium mb-3">Execution Steps</h4>
+
                 <div className="space-y-2">
                   {[
                     { status: "complete", label: "Initialize environment" },
@@ -249,6 +284,7 @@ export default function AgentPage({ params }: { params: { id: string } }) {
                       ) : (
                         <div className="w-4 h-4 rounded-full border border-white/20 shrink-0" />
                       )}
+
                       <span
                         className={`text-sm ${
                           step.status === "complete"
