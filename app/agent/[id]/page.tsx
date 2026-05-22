@@ -107,6 +107,10 @@ export default function RepoPage() {
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [activePanel, setActivePanel] = useState<
+    "terminal" | "diff" | "logs" | "chat" | "files"
+  >("terminal");
+
   return (
     <Shell>
       <Sidebar />
@@ -120,9 +124,7 @@ export default function RepoPage() {
             <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
               main
             </span>
-            <span className="text-xs text-accent">
-              Repo #{repoId}
-            </span>
+            <span className="text-xs text-accent">Repo #{repoId}</span>
           </div>
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
