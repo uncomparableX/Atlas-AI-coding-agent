@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/glass/glass-card";
 import { StatusIndicator } from "@/components/agent/status-indicator";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { LogEntry, Thought, DockerSandbox } from "@/types";
 import {
   RotateCcw,
@@ -24,25 +25,29 @@ const mockThoughts: Thought[] = [
   {
     id: "1",
     timestamp: new Date(Date.now() - 1000 * 60 * 5),
-    content: "I need to implement OAuth2 authentication. First, let me check the existing auth structure.",
+    content:
+      "I need to implement OAuth2 authentication. First, let me check the existing auth structure.",
     type: "plan",
   },
   {
     id: "2",
     timestamp: new Date(Date.now() - 1000 * 60 * 4),
-    content: "Found passport.js in dependencies. I'll create strategies for Google and GitHub providers.",
+    content:
+      "Found passport.js in dependencies. I'll create strategies for Google and GitHub providers.",
     type: "reasoning",
   },
   {
     id: "3",
     timestamp: new Date(Date.now() - 1000 * 60 * 3),
-    content: "Created src/auth/strategies/google.ts with proper error handling and token refresh logic.",
+    content:
+      "Created src/auth/strategies/google.ts with proper error handling and token refresh logic.",
     type: "action",
   },
   {
     id: "4",
     timestamp: new Date(Date.now() - 1000 * 60 * 2),
-    content: "The implementation looks solid. I should add tests for the token refresh flow.",
+    content:
+      "The implementation looks solid. I should add tests for the token refresh flow.",
     type: "reflection",
   },
 ];
@@ -55,24 +60,15 @@ const mockSandbox: DockerSandbox = {
   uptime: 734,
 };
 
-type AgentPageProps = {
-  params: Promise<{ id: string }>;
-};
+export default function AgentPage() {
+  const params = useParams();
+  const taskId = params?.id as string;
 
-export default function AgentPage({ params }: AgentPageProps) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState<"running" | "paused" | "failed" | "complete">("running");
-  const [taskId, setTaskId] = useState("");
-
-  useEffect(() => {
-    async function loadParams() {
-      const resolvedParams = await params;
-      setTaskId(resolvedParams.id);
-    }
-
-    loadParams();
-  }, [params]);
+  const [status, setStatus] = useState<
+    "running" | "paused" | "failed" | "complete"
+  >("running");
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -106,19 +102,28 @@ export default function AgentPage({ params }: AgentPageProps) {
           <div className="flex items-center gap-4">
             <StatusIndicator
               status={{
-                state: status === "running" ? "coding" : status === "failed" ? "error" : "idle",
+                state:
+                  status === "running"
+                    ? "coding"
+                    : status === "failed"
+                    ? "error"
+                    : "idle",
                 progress,
                 lastActivity: new Date(),
               }}
               showLabel
             />
             <div className="w-px h-4 bg-border" />
-            <span className="text-sm text-muted-foreground">Task #{taskId}</span>
+            <span className="text-sm text-muted-foreground">
+              Task #{taskId}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setStatus(status === "running" ? "paused" : "running")}
+              onClick={() =>
+                setStatus(status === "running" ? "paused" : "running")
+              }
               className="p-2 rounded-lg hover:bg-white/5 transition-colors"
             >
               {status === "running" ? (
@@ -205,11 +210,16 @@ export default function AgentPage({ params }: AgentPageProps) {
               </h3>
 
               <div className="flex-1 min-h-0">
-                <Terminal logs={logs} live title="execution.log" className="h-full" />
+                <Terminal
+                  logs={logs}
+                  live
+                  title="execution.log"
+                  className="h-full"
+                />
               </div>
             </div>
 
-            {/* Sandbox & Metrics */}
+            {/* Sandbox */}
             <div className="col-span-1 space-y-4">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Docker Sandbox
@@ -220,26 +230,36 @@ export default function AgentPage({ params }: AgentPageProps) {
                   <Container className="w-5 h-5 text-accent" />
 
                   <div>
-                    <div className="text-sm font-medium">{mockSandbox.containerId}</div>
+                    <div className="text-sm font-medium">
+                      {mockSandbox.containerId}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       Uptime: {mockSandbox.uptime}s
                     </div>
                   </div>
 
-                  <span className="ml-auto flex items-center gap-1.5 text-xs text-terminal-green">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-terminal-green opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-terminal-green" />
-                    </span>
+                  <span className="ml-auto text-xs text-terminal-green">
                     {mockSandbox.status}
                   </span>
                 </div>
 
                 <div className="space-y-3">
                   {[
-                    { label: "CPU", value: mockSandbox.resources.cpu, icon: Cpu, color: "bg-accent" },
-                    { label: "Memory", value: mockSandbox.resources.memory, icon: HardDrive, color: "bg-terminal-purple" },
-                    { label: "Disk", value: mockSandbox.resources.disk, icon: Timer, color: "bg-terminal-green" },
+                    {
+                      label: "CPU",
+                      value: mockSandbox.resources.cpu,
+                      icon: Cpu,
+                    },
+                    {
+                      label: "Memory",
+                      value: mockSandbox.resources.memory,
+                      icon: HardDrive,
+                    },
+                    {
+                      label: "Disk",
+                      value: mockSandbox.resources.disk,
+                      icon: Timer,
+                    },
                   ].map((metric) => (
                     <div key={metric.label}>
                       <div className="flex items-center justify-between text-xs mb-1">
@@ -252,7 +272,7 @@ export default function AgentPage({ params }: AgentPageProps) {
 
                       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                         <motion.div
-                          className={`h-full ${metric.color} rounded-full`}
+                          className="h-full bg-accent rounded-full"
                           initial={{ width: 0 }}
                           animate={{ width: `${metric.value}%` }}
                           transition={{ duration: 1 }}
@@ -263,7 +283,6 @@ export default function AgentPage({ params }: AgentPageProps) {
                 </div>
               </GlassCard>
 
-              {/* Execution Steps */}
               <GlassCard className="p-4">
                 <h4 className="text-sm font-medium mb-3">Execution Steps</h4>
 
@@ -285,17 +304,7 @@ export default function AgentPage({ params }: AgentPageProps) {
                         <div className="w-4 h-4 rounded-full border border-white/20 shrink-0" />
                       )}
 
-                      <span
-                        className={`text-sm ${
-                          step.status === "complete"
-                            ? "text-muted-foreground line-through"
-                            : step.status === "running"
-                            ? "text-foreground"
-                            : "text-muted-foreground/50"
-                        }`}
-                      >
-                        {step.label}
-                      </span>
+                      <span className="text-sm">{step.label}</span>
                     </div>
                   ))}
                 </div>
