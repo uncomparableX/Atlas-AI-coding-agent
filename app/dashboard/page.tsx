@@ -1,5 +1,7 @@
 "use client";
 
+import { Shell } from "@/components/layout/shell";
+import { Sidebar } from "@/components/layout/sidebar";
 import { Terminal } from "@/components/terminal/terminal";
 import { StatusIndicator } from "@/components/agent/status-indicator";
 import { StreamingText } from "@/components/motion/streaming-text";
@@ -17,138 +19,64 @@ import {
   Terminal as TerminalIcon,
   GitPullRequest,
   Server,
-  Activity,
-  Plus,
-  LayoutDashboard,
-  FolderGit2,
-  Network,
-  LineChart,
-  Settings
+  Activity
 } from "lucide-react";
 
 type PanelType = "chat" | "diff" | "files" | "terminal";
 
-const RIGHT_PANEL_TABS = [
-  { id: "chat" as PanelType, icon: MessageSquare, label: "Chat" },
-  { id: "diff" as PanelType, icon: GitPullRequest, label: "Diffs" },
-  { id: "files" as PanelType, icon: FileCode, label: "Files" },
-  { id: "terminal" as PanelType, icon: TerminalIcon, label: "Logs" },
-];
-
 export default function DashboardPage() {
-  const { status, messages, addMessage, isStreaming, clearMessages, resetStatus } = useAgentStore();
+  const { status, messages, addMessage, isStreaming, setStatus } = useAgentStore();
   const { activePanel, setActivePanel } = useUIStore();
-  
   const [input, setInput] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [localLogs, setLocalLogs] = useState<{ id: string; timestamp: Date; level: string; message: string; source: string }[]>([]);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, localLogs]);
 
   const handleSend = () => {
     if (!input.trim()) return;
 
-    const userInput = input.trim();
-
+    const userInput = input;
     addMessage({
       id: Date.now().toString(),
       role: "user",
       content: userInput,
       timestamp: new Date(),
     });
-
-    addMessage({
-      id: (Date.now() + 1).toString(),
-      role: "agent",
-      content: "ATLAS received your request. Backend execution engine not connected yet.",
-      timestamp: new Date(),
-    });
-
+    
     setInput("");
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
-  };
-
-  const handleNewTask = () => {
-    if (clearMessages) clearMessages();
-    if (resetStatus) resetStatus();
-    setInput("");
+    if (setStatus) setStatus("working");
     setActivePanel("chat");
+
     setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
+      setLocalLogs(prev => [...prev, { id: Date.now().toString(), timestamp: new Date(), level: "info", message: "Task received. Initializing planner...", source: "ATLAS-Core" }]);
+      addMessage({ id: (Date.now() + 1).toString(), role: "agent", content: "Planning...", timestamp: new Date() });
+    }, 600);
+
+    setTimeout(() => {
+      setLocalLogs(prev => [...prev, { id: Date.now().toString(), timestamp: new Date(), level: "info", message: "Generating execution steps and applying changes...", source: "ATLAS-Builder" }]);
+      addMessage({ id: (Date.now() + 2).toString(), role: "agent", content: "Generating code...", timestamp: new Date() });
+    }, 2000);
+
+    setTimeout(() => {
+      setLocalLogs(prev => [...prev, { id: Date.now().toString(), timestamp: new Date(), level: "success", message: "Task executed successfully.", source: "ATLAS-Executor" }]);
+      addMessage({ id: (Date.now() + 3).toString(), role: "agent", content: "Completed. The modifications have been applied.", timestamp: new Date() });
+      if (setStatus) setStatus("idle");
+    }, 4000);
   };
 
   const hasActiveTask = messages.length > 0;
 
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-background/50 flex flex-col backdrop-blur-sm hidden md:flex shrink-0">
-        <div className="h-14 border-b border-border flex items-center px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gradient-to-br from-accent to-accent-secondary flex items-center justify-center">
-              <span className="text-white font-bold text-[10px]">A</span>
-            </div>
-            <span className="font-semibold tracking-wide">ATLAS</span>
-          </div>
-        </div>
-
-        <div className="p-4 border-b border-border/50">
-          <button
-            onClick={handleNewTask}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-accent-foreground rounded-md hover:bg-accent/90 transition-colors text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            New Task
-          </button>
-        </div>
-
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <div className="text-xs font-semibold text-muted-foreground/70 mb-3 px-3 uppercase tracking-wider">
-            Platform
-          </div>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 bg-accent/10 text-accent rounded-md text-sm font-medium transition-colors">
-            <LayoutDashboard className="w-4 h-4" />
-            Dashboard
-          </button>
-          
-          {/* Placeholder/Disabled Routes */}
-          {[
-            { icon: FolderGit2, label: "Repositories" },
-            { icon: Network, label: "Agents" },
-            { icon: LineChart, label: "Analytics" },
-            { icon: Settings, label: "Settings" },
-          ].map((item) => (
-            <button
-              key={item.label}
-              disabled
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-muted-foreground hover:text-foreground hover:bg-white/[0.05] rounded-md text-sm transition-colors cursor-not-allowed group"
-            >
-              <item.icon className="w-4 h-4 opacity-70" />
-              <span className="flex-1 text-left opacity-70">{item.label}</span>
-              <span className="text-[9px] uppercase tracking-wider bg-white/10 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                Soon
-              </span>
-            </button>
-          ))}
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar */}
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0 bg-background/50">
         <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-background/50 backdrop-blur-sm">
           <div className="flex items-center gap-4">
-            <StatusIndicator
-              status={status || "idle"}
-              size="sm"
-              showLabel
-            />
+            <StatusIndicator status={status || "idle"} size="sm" showLabel />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -158,22 +86,19 @@ export default function DashboardPage() {
             <div className="w-px h-4 bg-border" />
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Activity className="w-3.5 h-3.5" />
-              <span>{hasActiveTask ? "Processing" : "Idle"}</span>
+              <span>{status === "working" ? "Processing" : "Idle"}</span>
             </div>
           </div>
         </header>
 
-        {/* Workspace */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Chat / Main Panel */}
-          <div className="flex-1 flex flex-col min-w-0 bg-background/30">
-            {/* Task Info */}
+          <div className="flex-1 flex flex-col min-w-0">
             <div className="px-6 py-4 border-b border-border transition-colors">
               {hasActiveTask ? (
                 <>
                   <div className="flex items-center gap-3 mb-2">
                     <GitBranch className="w-4 h-4 text-accent" />
-                    <span className="text-sm font-mono text-accent">atlas/execution</span>
+                    <span className="text-sm font-mono text-accent">atlas/workspace</span>
                     <span className="text-xs text-muted-foreground">active task</span>
                   </div>
                   <h2 className="text-lg font-semibold">Active Execution</h2>
@@ -195,7 +120,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-auto px-6 py-4 space-y-6">
               {!hasActiveTask && (
                 <div className="h-full flex flex-col items-center justify-center text-center opacity-50 space-y-4">
@@ -206,70 +130,60 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
-              
               <AnimatePresence initial={false}>
-                {messages.map((msg, i) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex gap-4"
-                  >
-                    <div className="shrink-0">
-                      {msg.role === "user" ? (
-                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                          <User className="w-4 h-4 text-foreground" />
-                        </div>
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
-                          <Bot className="w-4 h-4 text-accent" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium">
-                          {msg.role === "user" ? "You" : "ATLAS"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime())
-                            ? new Date(msg.timestamp).toLocaleTimeString()
-                            : "--:--:--"}
-                        </span>
-                      </div>
-                      <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                        {msg.role === "agent" && i === messages.length - 1 && isStreaming ? (
-                          <StreamingText text={msg.content} speed={20} />
+                {messages.map((msg, i) => {
+                  const safeTime = msg.timestamp && !isNaN(new Date(msg.timestamp).getTime())
+                    ? new Date(msg.timestamp).toLocaleTimeString()
+                    : "--:--";
+
+                  return (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex gap-4"
+                    >
+                      <div className="shrink-0">
+                        {msg.role === "user" ? (
+                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                            <User className="w-4 h-4 text-foreground" />
+                          </div>
                         ) : (
-                          msg.content
+                          <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+                            <Bot className="w-4 h-4 text-accent" />
+                          </div>
                         )}
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium">
+                            {msg.role === "user" ? "You" : "ATLAS"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{safeTime}</span>
+                        </div>
+                        <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                          {msg.role === "agent" && i === messages.length - 1 && isStreaming ? (
+                            <StreamingText text={msg.content} speed={20} />
+                          ) : (
+                            msg.content
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
-              
-              {/* Invisible element to anchor the auto-scroll */}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
             <div className="p-4 border-t border-border bg-background">
-              <div className="glass-panel flex items-center gap-3 px-4 py-3 border border-border/50 rounded-lg focus-within:border-accent/50 focus-within:ring-1 focus-within:ring-accent/50 transition-all">
+              <div className="glass-panel flex items-center gap-3 px-4 py-3">
                 <input
-                  ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
                   placeholder="Ask ATLAS to build or modify something..."
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
-                  autoFocus
                 />
                 <button
                   onClick={handleSend}
@@ -281,20 +195,22 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Terminal (Always Visible for MVP) */}
             <div className="h-64 border-t border-border overflow-hidden bg-background shrink-0">
-              <Terminal logs={[]} live={false} title="atlas-executor.log [STANDBY]" />
+              <Terminal logs={localLogs} live={status === "working"} title={status === "working" ? "atlas-executor.log [LIVE]" : "atlas-executor.log [STANDBY]"} />
             </div>
           </div>
 
-          {/* Right Panel */}
           <div className="w-80 border-l border-border bg-background/50 backdrop-blur-sm flex flex-col shrink-0 hidden lg:flex">
-            {/* Tabs */}
             <div className="flex border-b border-border">
-              {RIGHT_PANEL_TABS.map((tab) => (
+              {[
+                { id: "chat", icon: MessageSquare, label: "Chat" },
+                { id: "diff", icon: GitPullRequest, label: "Diffs" },
+                { id: "files", icon: FileCode, label: "Files" },
+                { id: "terminal", icon: TerminalIcon, label: "Logs" },
+              ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActivePanel(tab.id)}
+                  onClick={() => setActivePanel(tab.id as PanelType)}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs transition-colors ${
                     activePanel === tab.id
                       ? "text-accent border-b-2 border-accent bg-accent/5"
@@ -307,12 +223,21 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Panel Content (Empty States for MVP) */}
             <div className="flex-1 overflow-auto p-4 flex flex-col">
               {activePanel === "chat" && (
-                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground space-y-3 opacity-50">
-                  <MessageSquare className="w-8 h-8" />
-                  <p className="text-xs">Agent thoughts will appear here</p>
+                <div className="flex-1 overflow-auto space-y-4">
+                   {messages.map((msg) => (
+                     <div key={`side-${msg.id}`} className="text-sm border-b border-white/5 pb-2">
+                       <span className={`font-semibold ${msg.role === 'user' ? 'text-foreground' : 'text-accent'}`}>{msg.role === 'user' ? 'You:' : 'ATLAS:'}</span>
+                       <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{msg.content}</p>
+                     </div>
+                   ))}
+                   {messages.length === 0 && (
+                     <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50 space-y-2">
+                       <MessageSquare className="w-8 h-8" />
+                       <p className="text-xs">Agent thoughts will appear here</p>
+                     </div>
+                   )}
                 </div>
               )}
 
@@ -331,9 +256,17 @@ export default function DashboardPage() {
               )}
 
               {activePanel === "terminal" && (
-                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground space-y-3 opacity-50">
-                  <TerminalIcon className="w-8 h-8" />
-                  <p className="text-xs">Awaiting execution logs</p>
+                <div className="flex-1 overflow-auto space-y-2 font-mono text-[10px]">
+                  {localLogs.length > 0 ? localLogs.map((log) => (
+                    <div key={`panel-${log.id}`} className="text-muted-foreground">
+                      <span className="text-accent/50">[{log.source}]</span> {log.message}
+                    </div>
+                  )) : (
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50 space-y-2">
+                      <TerminalIcon className="w-8 h-8" />
+                      <p className="text-xs text-center">Awaiting execution logs</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
